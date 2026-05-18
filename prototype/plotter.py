@@ -5,36 +5,56 @@ import csv
 def read_log(filename='output_log.csv'):
     """Чтение данных из CSV-файла"""
     angles = []
-    r_amps = []
-    t_amps = []
+    r_s_amps = []
+    t_s_amps = []
+    r_p_amps = []
+    t_p_amps = []
     with open(filename, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             angles.append(float(row['theta_deg']))
-            r_amps.append(float(row['R_amp']))
-            t_amps.append(float(row['T_amp']))
-    return np.array(angles), np.array(r_amps), np.array(t_amps)
+            r_s_amps.append(float(row['R_s_amp']))
+            t_s_amps.append(float(row['T_s_amp']))
+            r_p_amps.append(float(row['R_p_amp']))
+            t_p_amps.append(float(row['T_p_amp']))
+    return (np.array(angles), 
+            np.array(r_s_amps), np.array(t_s_amps),
+            np.array(r_p_amps), np.array(t_p_amps))
 
-def plot_amplitude_vs_angle(angles, r_amps, t_amps):
+
+def plot_amplitude_vs_angle(angles, r_s, t_s, r_p, t_p):
     """
-    График 1: Зависимость амплитудных коэффициентов отражения и пропускания
-    от угла падения (по данным прототипа)
+    График 1: Зависимость амплитудных коэффициентов Френеля
+    от угла падения для s- и p-поляризаций
     """
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
-    ax.plot(angles, r_amps, 'o-', color='red', label='R (отражение), прототип', markersize=6)
-    ax.plot(angles, t_amps, 's-', color='blue', label='T (пропускание), прототип', markersize=6)
+    # s-поляризация
+    ax1.plot(angles, r_s, 'o-', color='red', label='r_s (отражение)', markersize=6)
+    ax1.plot(angles, t_s, 's-', color='blue', label='t_s (пропускание)', markersize=6)
+    ax1.set_xlabel('Угол падения θ, градусы', fontsize=12)
+    ax1.set_ylabel('Амплитудный коэффициент', fontsize=12)
+    ax1.set_title('s-поляризация (TE)', fontsize=13)
+    ax1.legend(fontsize=11)
+    ax1.grid(True, linestyle='--', alpha=0.7)
+    ax1.set_ylim(-0.5, 1.2)
 
-    ax.set_xlabel('Угол падения θ, градусы', fontsize=12)
-    ax.set_ylabel('Амплитудный коэффициент', fontsize=12)
-    ax.set_title('Рис. 2 — Зависимость амплитуд отражённой и прошедшей волн\nот угла падения (расчёт прототипа, n₁ = 1.0, n₂ = 1.5)', fontsize=13)
-    ax.legend(fontsize=11)
-    ax.grid(True, linestyle='--', alpha=0.7)
-    ax.set_ylim(-0.3, 1.0)
+    # p-поляризация
+    ax2.plot(angles, r_p, 'o-', color='red', label='r_p (отражение)', markersize=6)
+    ax2.plot(angles, t_p, 's-', color='blue', label='t_p (пропускание)', markersize=6)
+    ax2.set_xlabel('Угол падения θ, градусы', fontsize=12)
+    ax2.set_ylabel('Амплитудный коэффициент', fontsize=12)
+    ax2.set_title('p-поляризация (TM)', fontsize=13)
+    ax2.legend(fontsize=11)
+    ax2.grid(True, linestyle='--', alpha=0.7)
+    ax2.set_ylim(-0.5, 1.2)
 
+    fig.suptitle('Рис. 2 — Зависимость амплитудных коэффициентов Френеля\nот угла падения (n₁ = 1.0, n₂ = 1.5)', 
+                 fontsize=14, fontweight='bold')
     plt.tight_layout()
     plt.savefig('amplitude_vs_angle.png', dpi=150)
     plt.show()
+
 
 def plot_wave_vectors_diagram():
     """
@@ -99,11 +119,18 @@ def plot_wave_vectors_diagram():
     plt.savefig('wave_vectors_diagram.png', dpi=150)
     plt.show()
 
+
 if __name__ == "__main__":
-    # Попытка чтения данных
+    # Чтение данных и построение графиков
     try:
-        angles, r_amps, t_amps = read_log()
-        plot_amplitude_vs_angle(angles, r_amps, t_amps)
+        angles, r_s, t_s, r_p, t_p = read_log()
+        print(f"Загружено {len(angles)} точек данных")
+        plot_amplitude_vs_angle(angles, r_s, t_s, r_p, t_p)
     except FileNotFoundError:
-        print("Файл output_log.csv не найден. Строим только диаграмму волновых векторов.")
+        print("Файл output_log.csv не найден.")
+        print("Сначала запустите main.py для генерации данных, затем plotter.py для графиков.")
+    except KeyError as e:
+        print(f"Ошибка чтения столбца: {e}")
+        print("Проверьте структуру CSV-файла.")
+
     plot_wave_vectors_diagram()
