@@ -106,9 +106,13 @@ def log_results(filename, results_list):
     """Запись серии результатов в CSV-файл"""
     fieldnames = [
         'theta_deg',
-        'k_Ix', 'k_Iz',
-        'k_Rx', 'k_Rz',
-        'k_Tx', 'k_Tz',
+        # Падающий вектор k_I (все 3 компоненты)
+        'k_Ix', 'k_Iy', 'k_Iz',
+        # Отражённый вектор k_R (все 3 компоненты)
+        'k_Rx', 'k_Ry', 'k_Rz',
+        # Прошедший вектор k_T (все 3 компоненты)
+        'k_Tx', 'k_Ty', 'k_Tz',
+        # Коэффициенты Френеля
         'r_s', 't_s', 'R_s_amp', 'T_s_amp',
         'r_p', 't_p', 'R_p_amp', 'T_p_amp'
     ]
@@ -118,9 +122,13 @@ def log_results(filename, results_list):
         for res in results_list:
             writer.writerow({
                 'theta_deg': res['theta_deg'],
-                'k_Ix': res['k_I'][0], 'k_Iz': res['k_I'][2],
-                'k_Rx': res['k_R'][0], 'k_Rz': res['k_R'][2],
-                'k_Tx': np.real(res['k_T'][0]), 'k_Tz': np.real(res['k_T'][2]),
+                # k_I
+                'k_Ix': res['k_I'][0], 'k_Iy': res['k_I'][1], 'k_Iz': res['k_I'][2],
+                # k_R
+                'k_Rx': res['k_R'][0], 'k_Ry': res['k_R'][1], 'k_Rz': res['k_R'][2],
+                # k_T
+                'k_Tx': np.real(res['k_T'][0]), 'k_Ty': np.real(res['k_T'][1]), 'k_Tz': np.real(res['k_T'][2]),
+                # Коэффициенты
                 'r_s': np.real(res['r_s']), 't_s': np.real(res['t_s']),
                 'R_s_amp': res['R_s_amp'], 'T_s_amp': res['T_s_amp'],
                 'r_p': np.real(res['r_p']), 't_p': np.real(res['t_p']),
