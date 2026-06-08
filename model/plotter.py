@@ -2,10 +2,33 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 
-def read_vectors_from_log(filename='output_log.csv', target_theta=30.0):
+# ============================================================================
+# КОНФИГУРАЦИЯ (меняй здесь всё, что нужно)
+# ============================================================================
+
+CONFIG = {
+    'theta_deg': 30.0,           # Угол падения для всех графиков
+    'n1': 1.0,                   # Показатель преломления среды 1 (воздух)
+    'n2': 1.5,                   # Показатель преломления среды 2 (стекло)
+    'wavelength_min': 200,       # Мин. длина волны для спектральных графиков, нм
+    'wavelength_max': 2000,      # Макс. длина волны для спектральных графиков, нм
+    'dpi': 300,                  # Разрешение сохраняемых графиков
+    'csv_filename': 'output_log.csv'  # Имя CSV файла с данными
+}
+
+# ============================================================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ============================================================================
+
+def read_vectors_from_log(filename=None, target_theta=None):
     """
     Чтение волновых векторов для заданного угла из CSV-файла.
     """
+    if filename is None:
+        filename = CONFIG['csv_filename']
+    if target_theta is None:
+        target_theta = CONFIG['theta_deg']
+    
     with open(filename, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
@@ -23,37 +46,19 @@ def read_vectors_from_log(filename='output_log.csv', target_theta=30.0):
     return None
 
 
-import matplotlib.pyplot as plt
-import numpy as np
-import csv
+# ============================================================================
+# ГРАФИК 1: ДИАГРАММА ВОЛНОВЫХ ВЕКТОРОВ
+# ============================================================================
 
-def read_vectors_from_log(filename='output_log.csv', target_theta=30.0):
-    """
-    Чтение волновых векторов для заданного угла из CSV-файла.
-    """
-    with open(filename, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            theta = float(row['theta_deg'])
-            if np.isclose(theta, target_theta, atol=0.01):
-                k_I = np.array([float(row['k_Ix']), float(row['k_Iy']), float(row['k_Iz'])])
-                k_R = np.array([float(row['k_Rx']), float(row['k_Ry']), float(row['k_Rz'])])
-                k_T = np.array([float(row['k_Tx']), float(row['k_Ty']), float(row['k_Tz'])])
-                return {
-                    'theta': theta,
-                    'k_I': k_I,
-                    'k_R': k_R,
-                    'k_T': k_T
-                }
-    return None
-
-
-def plot_wave_vectors_from_log(filename='output_log.csv', target_theta=30.0):
+def plot_wave_vectors_from_log(filename=None, target_theta=None):
     """
     Построение диаграммы волновых векторов.
-    Ось X направлена ВНИЗ, ось Z ВПРАВО.
-    Нормаль к границе — вертикальная линия (вдоль оси X).
     """
+    if filename is None:
+        filename = CONFIG['csv_filename']
+    if target_theta is None:
+        target_theta = CONFIG['theta_deg']
+    
     data = read_vectors_from_log(filename, target_theta)
     
     if data is None:
@@ -72,9 +77,6 @@ def plot_wave_vectors_from_log(filename='output_log.csv', target_theta=30.0):
     k_T_scaled = k_T * scale
     
     # Инвертируем X-компоненту для отрисовки
-    # В matplotlib: ось Y вверх (+), ось X вправо (+)
-    # У нас: ось X вниз, ось Z вправо
-    # Поэтому: X_plot = Z_real, Y_plot = -X_real
     k_I_plot_x = k_I_scaled[2]   # Z → X графика (вправо)
     k_I_plot_y = -k_I_scaled[0]  # -X → Y графика (X>0 вниз → Y<0)
     
@@ -93,28 +95,28 @@ def plot_wave_vectors_from_log(filename='output_log.csv', target_theta=30.0):
     ax.axvline(x=0, color='gray', linewidth=1.5, linestyle='--', alpha=0.5)
     
     # Подписи сред
-    ax.text(1.5, 1.5, 'Среда 1 (воздух)\nn₁ = 1.0, x < 0', fontsize=12,
+    ax.text(1.5, 1.5, f'Среда 1 (воздух)\nn₁ = {CONFIG["n1"]}, x < 0', fontsize=12,
             bbox=dict(boxstyle='round', facecolor='lightyellow', alpha=0.8),
             ha='center', fontweight='bold')
-    ax.text(1.5, -1.5, 'Среда 2 (стекло)\nn₂ = 1.5, x > 0', fontsize=12,
+    ax.text(1.5, -1.5, f'Среда 2 (стекло)\nn₂ = {CONFIG["n2"]}, x > 0', fontsize=12,
             bbox=dict(boxstyle='round', facecolor='lightcyan', alpha=0.8),
             ha='center', fontweight='bold')
     
-    # Падающий луч: из среды 1 (сверху) к точке падения
+    # Падающий луч
     ax.arrow(-k_I_plot_x, -k_I_plot_y, k_I_plot_x, k_I_plot_y,
              head_width=0.08, head_length=0.12,
              fc='limegreen', ec='darkgreen', linewidth=2.5,
              label=f'Падающий луч (kᵢ)\n|kᵢ| = {np.linalg.norm(k_I)*scale:.2f}',
              length_includes_head=True, zorder=5)
     
-    # Отражённый луч: в среду 1 (вверх)
+    # Отражённый луч
     ax.arrow(0, 0, k_R_plot_x, k_R_plot_y,
              head_width=0.08, head_length=0.12,
              fc='red', ec='darkred', linewidth=2.5,
              label=f'Отражённый луч (kᵣ)\n|kᵣ| = {np.linalg.norm(k_R)*scale:.2f}',
              length_includes_head=True, zorder=5)
     
-    # Преломлённый луч: в среду 2 (вниз)
+    # Преломлённый луч
     ax.arrow(0, 0, k_T_plot_x, k_T_plot_y,
              head_width=0.08, head_length=0.12,
              fc='dodgerblue', ec='darkblue', linewidth=2.5,
@@ -124,53 +126,31 @@ def plot_wave_vectors_from_log(filename='output_log.csv', target_theta=30.0):
     # Точка падения
     ax.plot(0, 0, 'o', color='black', markersize=10, zorder=10)
     
-    # ============================================================
-    # Углы (ИСПРАВЛЕНО!)
-    # Нормаль — это вертикальная линия (вдоль оси X, x=0)
-    # Угол отсчитывается от нормали к лучу
-    # ============================================================
-    
-    # Направление нормали в среде 1: вверх (0, 1) — против оси X
-    # Направление нормали в среде 2: вниз (0, -1) — по оси X
-    
-    # Угол падения: от нормали (вверх) к падающему лучу
-    # Падающий луч идёт вправо-вниз: вектор (k_I_plot_x, k_I_plot_y)
-    # k_I_plot_y < 0 (вниз), k_I_plot_x > 0 (вправо)
-    # Угол от вертикали вверх: arctan(k_I_plot_x / |k_I_plot_y|)
-    theta_rad = np.arctan2(k_I_plot_x, -k_I_plot_y)  # угол от нормали вверх
-    
-    # Угол преломления: от нормали (вниз) к преломлённому лучу
-    # k_T_plot_y < 0 (вниз), k_T_plot_x > 0 (вправо)
-    theta_T_rad = np.arctan2(k_T_plot_x, -k_T_plot_y)  # угол от нормали вниз
-    
+    # Углы
+    theta_rad = np.arctan2(k_I_plot_x, -k_I_plot_y)
+    theta_T_rad = np.arctan2(k_T_plot_x, -k_T_plot_y)
     arc_r = 0.6
     
-    # Угол падения θ (дуга от нормали вверх к падающему лучу)
-    # Нормаль вверх: угол 90° в полярных координатах (направление (0,1))
-    # Падающий луч: угол 90° - θ от оси X
-    theta_start = np.pi/2  # нормаль вверх
-    theta_end = np.pi/2 - theta_rad  # падающий луч
+    # Угол падения
+    theta_start = np.pi/2
+    theta_end = np.pi/2 - theta_rad
     theta_arc = np.linspace(theta_end, theta_start, 30)
     ax.plot(arc_r * np.cos(theta_arc), arc_r * np.sin(theta_arc),
             'red', linewidth=2, linestyle='--')
     ax.text(0.15, 0.55, f'θ = {theta:.1f}°', fontsize=11,
             color='darkred', fontweight='bold')
     
-    # Угол отражения θ (дуга от нормали вверх к отражённому лучу)
-    # Отражённый луч: угол 90° + θ от оси X
-    theta_refl_start = np.pi/2  # нормаль вверх
-    theta_refl_end = np.pi/2 + theta_rad  # отражённый луч
-    theta_refl_arc = np.linspace(theta_refl_start, theta_refl_end, 30)
+    # Угол отражения
+    theta_refl_end = np.pi/2 + theta_rad
+    theta_refl_arc = np.linspace(theta_start, theta_refl_end, 30)
     ax.plot(arc_r * np.cos(theta_refl_arc), arc_r * np.sin(theta_refl_arc),
             'green', linewidth=2, linestyle='--')
     ax.text(0.15, 0.45, f'θ = {theta:.1f}°', fontsize=11,
             color='darkgreen', fontweight='bold')
     
-    # Угол преломления θ_T (дуга от нормали вниз к преломлённому лучу)
-    # Нормаль вниз: угол -90° (или 270°) 
-    # Преломлённый луч: угол -90° + θ_T
-    theta_T_start = -np.pi/2  # нормаль вниз
-    theta_T_end = -np.pi/2 + theta_T_rad  # преломлённый луч
+    # Угол преломления
+    theta_T_start = -np.pi/2
+    theta_T_end = -np.pi/2 + theta_T_rad
     theta_T_arc = np.linspace(theta_T_start, theta_T_end, 30)
     ax.plot(arc_r * np.cos(theta_T_arc), arc_r * np.sin(theta_T_arc),
             'blue', linewidth=2, linestyle='--')
@@ -193,14 +173,21 @@ def plot_wave_vectors_from_log(filename='output_log.csv', target_theta=30.0):
     ax.grid(True, linestyle=':', alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('wave_vectors_diagram.png', dpi=150, bbox_inches='tight')
+    plt.savefig('wave_vectors_diagram.png', dpi=CONFIG['dpi'], bbox_inches='tight')
     plt.show()
 
 
-def plot_amplitude_vs_angle(filename='output_log.csv'):
+# ============================================================================
+# ГРАФИК 2: АМПЛИТУДНЫЕ КОЭФФИЦИЕНТЫ ФРЕНЕЛЯ
+# ============================================================================
+
+def plot_amplitude_vs_angle(filename=None):
     """
     График зависимости амплитудных коэффициентов Френеля от угла падения.
     """
+    if filename is None:
+        filename = CONFIG['csv_filename']
+    
     angles = []
     r_s_vals, t_s_vals = [], []
     r_p_vals, t_p_vals = [], []
@@ -223,104 +210,276 @@ def plot_amplitude_vs_angle(filename='output_log.csv'):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
     
     # s-поляризация
-    ax1.plot(angles, r_s_vals, 'o-', color='red', label='r_s (отражение)', markersize=6)
-    ax1.plot(angles, t_s_vals, 's-', color='blue', label='t_s (пропускание)', markersize=6)
+    ax1.plot(angles, r_s_vals, 'o-', color='red', label='r_s (отражение)', markersize=6, linewidth=2)
+    ax1.plot(angles, t_s_vals, 's-', color='blue', label='t_s (пропускание)', markersize=6, linewidth=2)
     ax1.set_xlabel('Угол падения θ, градусы', fontsize=12)
     ax1.set_ylabel('Амплитудный коэффициент', fontsize=12)
     ax1.set_title('s-поляризация (TE)', fontsize=13)
     ax1.legend(fontsize=11)
     ax1.grid(True, linestyle='--', alpha=0.7)
     ax1.set_ylim(-0.5, 1.2)
+    ax1.axvline(x=CONFIG['theta_deg'], color='gray', linestyle=':', alpha=0.7, linewidth=1.5)
     
     # p-поляризация
-    ax2.plot(angles, r_p_vals, 'o-', color='red', label='r_p (отражение)', markersize=6)
-    ax2.plot(angles, t_p_vals, 's-', color='blue', label='t_p (пропускание)', markersize=6)
+    ax2.plot(angles, r_p_vals, 'o-', color='red', label='r_p (отражение)', markersize=6, linewidth=2)
+    ax2.plot(angles, t_p_vals, 's-', color='blue', label='t_p (пропускание)', markersize=6, linewidth=2)
     ax2.set_xlabel('Угол падения θ, градусы', fontsize=12)
     ax2.set_ylabel('Амплитудный коэффициент', fontsize=12)
     ax2.set_title('p-поляризация (TM)', fontsize=13)
     ax2.legend(fontsize=11)
     ax2.grid(True, linestyle='--', alpha=0.7)
     ax2.set_ylim(-0.5, 1.2)
+    ax2.axvline(x=CONFIG['theta_deg'], color='gray', linestyle=':', alpha=0.7, linewidth=1.5)
     
-    fig.suptitle('Коэффициенты Френеля для границы воздух-стекло (n₁=1.0, n₂=1.5)',
+    fig.suptitle(f'Коэффициенты Френеля для границы воздух-стекло (n₁={CONFIG["n1"]}, n₂={CONFIG["n2"]})\n'
+                 f'Вертикальная линия — выбранный угол θ = {CONFIG["theta_deg"]}°',
                  fontsize=14, fontweight='bold')
     plt.tight_layout()
-    plt.savefig('amplitude_vs_angle.png', dpi=150)
+    plt.savefig('amplitude_vs_angle.png', dpi=CONFIG['dpi'])
     plt.show()
 
 
-if __name__ == "__main__":
-    print("Построение диаграммы волновых векторов (θ = 30°)...")
-    plot_wave_vectors_from_log('output_log.csv', target_theta=30.0)
-    
-    print("Построение графиков коэффициентов Френеля...")
-    try:
-        plot_amplitude_vs_angle('output_log.csv')
-    except FileNotFoundError:
-        print("Файл output_log.csv не найден. Сначала запустите main.py")
-    except KeyError as e:
-        print(f"Ошибка чтения данных: {e}")
+# ============================================================================
+# ГРАФИК 3: ЗАКОН СОХРАНЕНИЯ ЭНЕРГИИ
+# ============================================================================
 
-def plot_amplitude_vs_angle(filename='output_log.csv'):
+def plot_energy_conservation(filename=None):
     """
-    График зависимости амплитудных коэффициентов Френеля от угла падения.
+    График закона сохранения энергии R + T = 1.
     """
+    if filename is None:
+        filename = CONFIG['csv_filename']
+    
     angles = []
-    r_s_vals, t_s_vals = [], []
-    r_p_vals, t_p_vals = [], []
+    R_s, T_s = [], []
+    R_p, T_p = [], []
     
     with open(filename, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             angles.append(float(row['theta_deg']))
-            r_s_vals.append(float(row['r_s']))
-            t_s_vals.append(float(row['t_s']))
-            r_p_vals.append(float(row['r_p']))
-            t_p_vals.append(float(row['t_p']))
+            R_s.append(float(row['R_s']))
+            T_s.append(float(row['T_s']))
+            R_p.append(float(row['R_p']))
+            T_p.append(float(row['T_p']))
     
     angles = np.array(angles)
-    r_s_vals = np.array(r_s_vals)
-    t_s_vals = np.array(t_s_vals)
-    r_p_vals = np.array(r_p_vals)
-    t_p_vals = np.array(t_p_vals)
+    R_s = np.array(R_s)
+    T_s = np.array(T_s)
+    R_p = np.array(R_p)
+    T_p = np.array(T_p)
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+    plt.figure(figsize=(10, 6))
     
-    # s-поляризация
-    ax1.plot(angles, r_s_vals, 'o-', color='red', label='r_s (отражение)', markersize=6)
-    ax1.plot(angles, t_s_vals, 's-', color='blue', label='t_s (пропускание)', markersize=6)
-    ax1.set_xlabel('Угол падения θ, градусы', fontsize=12)
-    ax1.set_ylabel('Амплитудный коэффициент', fontsize=12)
-    ax1.set_title('s-поляризация (TE)', fontsize=13)
-    ax1.legend(fontsize=11)
-    ax1.grid(True, linestyle='--', alpha=0.7)
-    ax1.set_ylim(-0.5, 1.2)
+    plt.plot(angles, R_s, 'o-', color='darkred', linewidth=2, markersize=6, label='R_s')
+    plt.plot(angles, T_s, 's-', color='salmon', linewidth=2, markersize=6, label='T_s')
+    plt.plot(angles, R_p, 'o-', color='darkblue', linewidth=2, markersize=6, label='R_p')
+    plt.plot(angles, T_p, 's-', color='skyblue', linewidth=2, markersize=6, label='T_p')
     
-    # p-поляризация
-    ax2.plot(angles, r_p_vals, 'o-', color='red', label='r_p (отражение)', markersize=6)
-    ax2.plot(angles, t_p_vals, 's-', color='blue', label='t_p (пропускание)', markersize=6)
-    ax2.set_xlabel('Угол падения θ, градусы', fontsize=12)
-    ax2.set_ylabel('Амплитудный коэффициент', fontsize=12)
-    ax2.set_title('p-поляризация (TM)', fontsize=13)
-    ax2.legend(fontsize=11)
-    ax2.grid(True, linestyle='--', alpha=0.7)
-    ax2.set_ylim(-0.5, 1.2)
+    plt.plot(angles, R_s + T_s, '--', color='black', linewidth=2, label='R_s + T_s')
+    plt.plot(angles, R_p + T_p, ':', color='black', linewidth=2, label='R_p + T_p')
     
-    fig.suptitle('Коэффициенты Френеля для границы воздух-стекло (n₁=1.0, n₂=1.5)',
-                 fontsize=14, fontweight='bold')
+    plt.axvline(x=CONFIG['theta_deg'], color='gray', linestyle=':', alpha=0.7, linewidth=1.5,
+                label=f'θ = {CONFIG["theta_deg"]}°')
+    
+    plt.xlabel('Угол падения θ, градусы', fontsize=14, fontweight='bold')
+    plt.ylabel('Энергетические коэффициенты (R, T)', fontsize=14, fontweight='bold')
+    plt.title(f'Закон сохранения энергии: R + T = 1\n'
+              f'воздух (n₁={CONFIG["n1"]}) → стекло (n₂={CONFIG["n2"]})',
+              fontsize=14, fontweight='bold')
+    
+    plt.xlim(0, 90)
+    plt.ylim(0, 1.05)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend(fontsize=11, loc='best')
+    
     plt.tight_layout()
-    plt.savefig('amplitude_vs_angle.png', dpi=150)
+    plt.savefig('energy_conservation.png', dpi=CONFIG['dpi'])
     plt.show()
 
 
-if __name__ == "__main__":
-    print("Построение диаграммы волновых векторов (θ = 30°)...")
-    plot_wave_vectors_from_log('output_log.csv', target_theta=30.0)
+# ============================================================================
+# ГРАФИК 4: СПЕКТРАЛЬНАЯ ЗАВИСИМОСТЬ (ДИСПЕРСИЯ)
+# ============================================================================
+
+def plot_wavelength_dependence(theta_deg=None):
+    """
+    Спектральная зависимость R(λ) и T(λ) для стекла с дисперсией по Коши.
+    """
+    if theta_deg is None:
+        theta_deg = CONFIG['theta_deg']
     
-    print("Построение графиков коэффициентов Френеля...")
+    n1 = CONFIG['n1']
+    theta_rad = np.radians(theta_deg)
+    
+    wavelengths_nm = np.linspace(CONFIG['wavelength_min'], CONFIG['wavelength_max'], 500)
+    wavelengths_um = wavelengths_nm / 1000.0
+    
+    R_avg = []
+    T_avg = []
+    
+    for lam_um in wavelengths_um:
+        n2 = CONFIG['n2'] + 0.004 / (lam_um**2)
+        
+        sin_theta_T = n1 / n2 * np.sin(theta_rad)
+        
+        if sin_theta_T >= 1.0:
+            R_avg.append(1.0)
+            T_avg.append(0.0)
+            continue
+        
+        cos_theta_I = np.cos(theta_rad)
+        cos_theta_T = np.sqrt(1 - sin_theta_T**2)
+        
+        # s-поляризация
+        r_s = (n1 * cos_theta_I - n2 * cos_theta_T) / (n1 * cos_theta_I + n2 * cos_theta_T)
+        R_s = r_s**2
+        t_s = (2 * n1 * cos_theta_I) / (n1 * cos_theta_I + n2 * cos_theta_T)
+        T_s = (n2 * cos_theta_T / (n1 * cos_theta_I)) * t_s**2
+        
+        # p-поляризация
+        r_p = (n2 * cos_theta_I - n1 * cos_theta_T) / (n2 * cos_theta_I + n1 * cos_theta_T)
+        R_p = r_p**2
+        t_p = (2 * n1 * cos_theta_I) / (n2 * cos_theta_I + n1 * cos_theta_T)
+        T_p = (n2 * cos_theta_T / (n1 * cos_theta_I)) * t_p**2
+        
+        R_avg.append(0.5 * (R_s + R_p))
+        T_avg.append(0.5 * (T_s + T_p))
+    
+    R_avg = np.array(R_avg)
+    T_avg = np.array(T_avg)
+    
+    plt.figure(figsize=(10, 6))
+    
+    plt.plot(wavelengths_nm, R_avg, 'r-', linewidth=2, label='R(λ)')
+    plt.plot(wavelengths_nm, T_avg, 'b-', linewidth=2, label='T(λ)')
+    plt.plot(wavelengths_nm, R_avg + T_avg, 'k--', linewidth=2, label='R + T = 1')
+    
+    plt.xlabel('Длина волны λ, нм', fontsize=14, fontweight='bold')
+    plt.ylabel('Коэффициент', fontsize=14, fontweight='bold')
+    plt.title(f'Спектральная зависимость коэффициентов Френеля\n'
+              f'Фиксированный угол падения θ = {theta_deg}°\n'
+              f'n₁ = {n1} (воздух), n₂(λ) = {CONFIG["n2"]} + 0.004/λ² (λ в мкм)',
+              fontsize=12, fontweight='bold')
+    
+    plt.xlim(CONFIG['wavelength_min'], CONFIG['wavelength_max'])
+    plt.ylim(0, 1.05)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.legend(fontsize=11, loc='best')
+    
+    plt.tight_layout()
+    plt.savefig('wavelength_dependence.png', dpi=CONFIG['dpi'])
+    plt.show()
+
+
+# ============================================================================
+# ГРАФИК 5: НОРМИРОВАННАЯ СПЕКТРАЛЬНАЯ ЗАВИСИМОСТЬ
+# ============================================================================
+
+def plot_normalized_wavelength_dependence(theta_deg=None):
+    """
+    Нормированный график спектральной зависимости.
+    """
+    if theta_deg is None:
+        theta_deg = CONFIG['theta_deg']
+    
+    theta_rad = np.radians(theta_deg)
+    n1 = CONFIG['n1']
+    
+    wavelengths_nm = np.linspace(CONFIG['wavelength_min'], CONFIG['wavelength_max'], 300)
+    wavelengths_um = wavelengths_nm / 1000.0
+    
+    R = []
+    
+    for lam_um in wavelengths_um:
+        n2 = CONFIG['n2'] + 0.004 / lam_um**2
+        sin_theta_T = n1 / n2 * np.sin(theta_rad)
+        
+        if sin_theta_T >= 1.0:
+            R.append(1.0)
+            continue
+        
+        cos_theta_I = np.cos(theta_rad)
+        cos_theta_T = np.sqrt(1 - sin_theta_T**2)
+        
+        # s-поляризация
+        r_s = (n1 * cos_theta_I - n2 * cos_theta_T) / (n1 * cos_theta_I + n2 * cos_theta_T)
+        R_s = r_s**2
+        
+        # p-поляризация
+        r_p = (n2 * cos_theta_I - n1 * cos_theta_T) / (n2 * cos_theta_I + n1 * cos_theta_T)
+        R_p = r_p**2
+        
+        R.append(0.5 * (R_s + R_p))
+    
+    R = np.array(R)
+    
+    # Нормировка
+    R_norm = (R - R.min()) / (R.max() - R.min())
+    T_norm = 1.0 - R_norm
+    
+    plt.figure(figsize=(10, 6))
+    
+    plt.plot(wavelengths_nm, R_norm, 'r-', linewidth=2, label='Rₙₒᵣₘ(λ)')
+    plt.plot(wavelengths_nm, T_norm, 'b-', linewidth=2, label='Tₙₒᵣₘ(λ)')
+    plt.axhline(0.5, linestyle='--', linewidth=1, color='gray', alpha=0.6, label='R = T = 0.5')
+    
+    plt.xlabel('Длина волны λ, нм', fontsize=14, fontweight='bold')
+    plt.ylabel('Нормированная величина', fontsize=14, fontweight='bold')
+    plt.title(f'Нормированное представление коэффициентов\n'
+              f'Фиксированный угол падения θ = {theta_deg}°',
+              fontsize=14, fontweight='bold')
+    
+    plt.xlim(CONFIG['wavelength_min'], CONFIG['wavelength_max'])
+    plt.ylim(0, 1)
+    plt.grid(True, linestyle='--', alpha=0.3)
+    plt.legend(fontsize=11, loc='best')
+    
+    plt.tight_layout()
+    plt.savefig('normalized_wavelength_dependence.png', dpi=CONFIG['dpi'], bbox_inches='tight')
+    plt.show()
+
+
+# ============================================================================
+# ОСНОВНАЯ ПРОГРАММА
+# ============================================================================
+
+if __name__ == "__main__":
+    print("=" * 70)
+    print("ПОСТРОЕНИЕ ДИАГРАММ И ГРАФИКОВ")
+    print("=" * 70)
+    print(f"\nТЕКУЩАЯ КОНФИГУРАЦИЯ:")
+    print(f"  Угол падения θ = {CONFIG['theta_deg']}°")
+    print(f"  n₁ = {CONFIG['n1']} (воздух)")
+    print(f"  n₂ = {CONFIG['n2']} (стекло)")
+    print(f"  Диапазон длин волн: {CONFIG['wavelength_min']} - {CONFIG['wavelength_max']} нм")
+    print("\n" + "=" * 70)
+    
+    print("\n1. Построение диаграммы волновых векторов...")
     try:
-        plot_amplitude_vs_angle('output_log.csv')
+        plot_wave_vectors_from_log()
     except FileNotFoundError:
-        print("Файл output_log.csv не найден. Сначала запустите main.py")
-    except KeyError as e:
-        print(f"Ошибка чтения данных: {e}")
+        print("   Ошибка: файл output_log.csv не найден. Сначала запустите первый файл.")
+    
+    print("\n2. Построение графиков коэффициентов Френеля от угла...")
+    try:
+        plot_amplitude_vs_angle()
+    except FileNotFoundError:
+        print("   Ошибка: файл output_log.csv не найден.")
+    
+    print("\n3. Построение графика закона сохранения энергии...")
+    try:
+        plot_energy_conservation()
+    except FileNotFoundError:
+        print("   Ошибка: файл output_log.csv не найден.")
+    
+    print("\n4. Построение спектральной зависимости (от длины волны)...")
+    plot_wavelength_dependence()
+    
+    print("\n5. Построение нормированной спектральной зависимости...")
+    plot_normalized_wavelength_dependence()
+    
+    print("\n" + "=" * 70)
+    print("ВСЕ ГРАФИКИ СОЗДАНЫ!")
+    print(f"Все спектральные графики построены для угла θ = {CONFIG['theta_deg']}°")
+    print("=" * 70)
